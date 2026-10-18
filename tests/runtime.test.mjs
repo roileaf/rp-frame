@@ -286,6 +286,37 @@ test('parts are independent: token glow uses the token color, camera var the cam
   delete globalThis.PIXI;
 });
 
+test('token and camera glow can each be turned off independently', () => {
+  for (const key of ['voiceShowToken','voiceShowCamera']) {
+    const data = settings.get(key);
+    assert.ok(data, key);
+    assert.equal(data.scope,'client');
+    assert.equal(data.config,false);
+    assert.equal(data.default,true);
+  }
+  const rings = [];
+  globalThis.PIXI = { Graphics: class { clear() { return this; } lineStyle() { return this; } drawCircle() { return this; } destroy() { this.destroyed = true; } } };
+  const tok = { actor:{id:'char'}, w:100, h:100, addChild(ring){ rings.push(ring); }, removeChild(ring){ rings.splice(rings.indexOf(ring),1); } };
+  globalThis.canvas = { tokens:{ placeables:[tok] } };
+  users.get('player').character = {id:'char'};
+  cameras = [camera('player')];
+  values.set('voiceGlow',true);
+  values.set('voiceShowCamera',false);
+  handlers.get('voice').call(context('player'),{talking:true,mic:'ok'});
+  assert.deepEqual(glowing(),[],'camera glow off');
+  assert.equal(rings.length,1,'token glow still on');
+  values.set('voiceShowCamera',true);
+  values.set('voiceShowToken',false);
+  settings.get('voiceShowToken').onChange(false);
+  assert.deepEqual(glowing(),['player'],'camera glow back on');
+  handlers.get('voice').call(context('player'),{talking:false,mic:'ok'});
+  for (const key of ['voiceGlow','voiceShowCamera','voiceShowToken']) values.delete(key);
+  delete users.get('player').character;
+  delete globalThis.canvas;
+  delete globalThis.PIXI;
+  cameras = [];
+});
+
 test('push-to-talk settings and keybinding are registered', () => {
   const ptt = settings.get('voicePtt'), mouse = settings.get('voicePttMouse');
   assert.equal(ptt.scope,'client');

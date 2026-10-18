@@ -7,6 +7,8 @@ const MIN_DB = -80, MAX_DB = -10;
 const SLIDERS = [['size', 'Size'], ['brightness', 'Brightness'], ['opacity', 'Opacity']];
 // Token and camera glow each have their own appearance controls, preview and reset.
 const PARTS = [['token', 'Token glow'], ['camera', 'Camera glow']];
+/** Per-part show toggles (client settings), so token and camera glow can be turned off independently. */
+export const SHOW_SETTINGS = { token: 'voiceShowToken', camera: 'voiceShowCamera' };
 // voicePttMouse values (see PTT_MOUSE in voice-ptt.mjs) and their labels.
 const PTT_OPTIONS = [['none', 'None'], ['back', 'Mouse 4 (Back)'], ['forward', 'Mouse 5 (Forward)']];
 const MIC_MESSAGES = {
@@ -129,7 +131,7 @@ export function voiceSettingsApp({ onAppearance, gate: pttGate } = {}) {
             <output data-for="${part}-${key}"></output></label>`;
         }).join('');
         return `<div class="rp-frame-appearance-part" data-part="${part}">
-          <h4>${title}</h4>
+          <h4><label class="rp-frame-voice-check"><input type="checkbox" data-setting="${SHOW_SETTINGS[part]}"> ${title}</label></h4>
           <div class="rp-frame-appearance-preview" aria-hidden="true">${previews[part]}</div>
           <label class="rp-frame-voice-threshold">Color
             <input type="color" name="${part}-color" data-key="color" value="${appearance.color}"></label>
@@ -199,6 +201,7 @@ export function voiceSettingsApp({ onAppearance, gate: pttGate } = {}) {
       on('input[data-setting=voiceShow]', 'change', event => void set('voiceShow', event.target.checked));
       for (const group of root.querySelectorAll('[data-part]')) {
         const part = group.dataset.part;
+        group.querySelector('input[data-setting]').addEventListener('change', event => void set(SHOW_SETTINGS[part], event.target.checked));
         for (const input of group.querySelectorAll('input[data-key]')) {
           const read = () => ({ [input.dataset.key]: input.type === 'color' ? input.value : Number(input.value) });
           input.addEventListener('input', () => this.updateAppearance(part, read()));
@@ -255,6 +258,7 @@ export function voiceSettingsApp({ onAppearance, gate: pttGate } = {}) {
       if (!root) return;
       root.querySelector('input[data-setting=voiceUse]').checked = !get('voiceOptOut');
       root.querySelector('input[data-setting=voiceShow]').checked = Boolean(get('voiceShow'));
+      for (const key of Object.values(SHOW_SETTINGS)) root.querySelector(`input[data-setting=${key}]`).checked = Boolean(get(key));
       const ptt = Boolean(get('voicePtt'));
       root.querySelector('input[data-setting=voicePtt]').checked = ptt;
       const mouse = root.querySelector('select[data-setting=voicePttMouse]');

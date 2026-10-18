@@ -63,7 +63,8 @@ function renderVoice() {
   const state = controller?.state;
   voiceGlow.sync({ talkingIds, state });
   if (typeof document.querySelectorAll !== 'function') return;
-  applyVoiceCameras(document, voiceGlowIds(talkingIds, state), game.user.isGM && setting('voiceGlow') ? roster.noMicIds() : null);
+  const cameraIds = setting('voiceShowCamera') ? voiceGlowIds(talkingIds, state) : new Set();
+  applyVoiceCameras(document, cameraIds, game.user.isGM && setting('voiceGlow') ? roster.noMicIds() : null);
 }
 
 /** Fade a glow out, then remove it; the token or glow may be destroyed meanwhile. */
@@ -117,6 +118,8 @@ export function registerSettings() {
   register('voiceGlow', { name: 'RP Frame: voice glow', hint: 'Players\' character tokens and camera tiles glow while they talk. Each player\'s browser measures their own mic level; no audio is sent or recorded.', scope: 'world', config: false, type: Boolean, default: false, onChange: () => { updateVoice(); renderVoice(); refreshVoiceSettings(); } });
   register('voiceOptOut', { name: 'RP Frame: don\'t use my mic for voice glow', scope: 'client', config: false, type: Boolean, default: false, onChange: () => { updateVoice(); refreshVoiceSettings(); } });
   register('voiceShow', { name: 'RP Frame: show voice glow', scope: 'client', config: false, type: Boolean, default: true, onChange: () => { renderVoice(); refreshVoiceSettings(); } });
+  register('voiceShowToken', { name: 'RP Frame: show token voice glow', scope: 'client', config: false, type: Boolean, default: true, onChange: () => { renderVoice(); refreshVoiceSettings(); } });
+  register('voiceShowCamera', { name: 'RP Frame: show camera voice glow', scope: 'client', config: false, type: Boolean, default: true, onChange: () => { renderVoice(); refreshVoiceSettings(); } });
   register('voiceConsent', { scope: 'client', config: false, type: Boolean, default: false });
   register('voiceThreshold', { scope: 'client', config: false, type: Number, default: DEFAULT_THRESHOLD_DB });
   register('voiceAppearance', { scope: 'client', config: false, type: Object, default: structuredClone(DEFAULT_APPEARANCES), onChange: applyAppearance });
@@ -225,7 +228,7 @@ export async function initialize() {
   });
   voiceGlow = new VoiceGlow({
     tokens: () => globalThis.canvas?.tokens?.placeables ?? [], users: () => game.users,
-    enabled: () => setting('voiceGlow') && setting('voiceShow'),
+    enabled: () => setting('voiceGlow') && setting('voiceShow') && setting('voiceShowToken'),
     createRing: createGlow, drawRing: (glow, token) => drawPixiGlow(glow, token, appearances.token), detachRing: detachGlow
   });
   voice = new VoiceService({

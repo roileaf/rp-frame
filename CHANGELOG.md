@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Turn the token glow and the camera glow on or off independently: **Token glow** and **Camera glow** under What I see each have their own checkbox (your screen only).
+
 ## 0.2.0 (prerelease)
 
 - Add a push-to-talk mode for voice glow (**Push-to-talk: glow only while I hold my talk key** under My mic): you glow only while you hold your talk key and your mic is above the threshold. Bind the key in **Configure Controls → RP Frame: push-to-talk**, or use Mouse 4 (Back) or Mouse 5 (Forward), which then no longer navigate the browser. Releasing the key, or leaving Foundry's window, stops the glow right away.
