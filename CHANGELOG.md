@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 (prerelease)
 
 - Turn the token glow and the camera glow on or off independently: **Token glow** and **Camera glow** under What I see each have their own checkbox (your screen only).
 
