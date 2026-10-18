@@ -85,6 +85,9 @@
 .rp-frame-voice-threshold { display: flex; align-items: center; gap: 8px; }
 .rp-frame-voice-threshold input, .rp-frame-voice-threshold select { flex: 1; }
 .rp-frame-voice-threshold output { min-width: 4.5em; text-align: right; }
+/* Voice glow window: never taller than the screen; the content scrolls vertically. */
+.rp-frame-voice-app { max-height: 90vh; }
+.rp-frame-voice-app .window-content { min-height: 0; overflow-x: hidden; overflow-y: auto; }
 /* Token and camera glow side by side; stacks again when the window is narrow. */
 .rp-frame-appearance-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .rp-frame-appearance-part { display: flex; flex-direction: column; gap: 8px; }

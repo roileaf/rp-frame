@@ -94,7 +94,7 @@ export function voiceSettingsApp({ onAppearance, gate: pttGate } = {}) {
   AppClass = class VoiceSettingsApp extends Base {
     static DEFAULT_OPTIONS = {
       classes: ['rp-frame-voice-app'],
-      window: { title: 'Voice glow', icon: 'fa-solid fa-microphone-lines' },
+      window: { title: 'Voice glow', icon: 'fa-solid fa-microphone-lines', resizable: true },
       position: { width: 640, height: 'auto' }
     };
 
