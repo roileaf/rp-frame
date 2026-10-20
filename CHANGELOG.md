@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0
+
+First stable release, now listed on foundryvtt.com. No changes since 0.2.1.
+
 ## 0.2.1 (prerelease)
 
 - Turn the token glow and the camera glow on or off independently: **Token glow** and **Camera glow** under What I see each have their own checkbox (your screen only).

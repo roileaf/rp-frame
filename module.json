@@ -2,7 +2,7 @@
   "id": "rp-frame",
   "title": "RP Frame",
   "description": "Take turns at the table. Players queue up to speak, the GM runs the scene, and everyone gets a chance to talk.",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "authors": [
     {
       "name": "RoiLeaf"
@@ -21,7 +21,7 @@
   "socket": true,
   "url": "https://github.com/roi007leaf/rp-frame",
   "manifest": "https://raw.githubusercontent.com/roi007leaf/rp-frame/main/module.json",
-  "download": "https://github.com/roi007leaf/rp-frame/releases/download/v0.2.1/rp-frame.zip",
+  "download": "https://github.com/roi007leaf/rp-frame/releases/download/v1.0.0/rp-frame.zip",
   "bugs": "https://github.com/roi007leaf/rp-frame/issues",
   "readme": "https://github.com/roi007leaf/rp-frame/blob/main/README.md",
   "changelog": "https://github.com/roi007leaf/rp-frame/blob/main/CHANGELOG.md",
