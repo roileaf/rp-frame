@@ -169,5 +169,7 @@
 .rp-frame-poll-ask .rp-frame-voice-check { font-size: 13px; font-weight: 400; flex-direction: row; }
 .rp-frame-poll-submit { display: flex; justify-content: flex-end; gap: 6px; }
 .rp-frame-poll .rp-frame-poll-submit button { flex: 0 0 auto; width: auto; height: auto; padding: 6px 14px; }
-.rp-frame-poll .rp-frame-poll-submit .rp-frame-primary { background: #153925; border-color: #51cf66; color: #e8ffe9; font-weight: 600; }
+/* Main actions (Ask everyone, Send/Update) in the module's green, over Foundry's default button look. */
+.rp-frame-poll .rp-frame-primary { background: #153925; border: 1px solid #51cf66; border-radius: 6px; color: #e8ffe9; font-weight: 600; box-shadow: none; }
+.rp-frame-poll .rp-frame-primary:hover, .rp-frame-poll .rp-frame-primary:focus-visible { background: #1d4a31; border-color: #69db7c; color: #fff; box-shadow: 0 0 8px rgb(81 207 102 / 35%); }
 .rp-frame-poll-empty { text-align: center; font-size: 13px; opacity: .65; padding: 8px 0; }
