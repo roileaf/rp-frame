@@ -15,7 +15,8 @@ globalThis.document = { body:null, documentElement:{ style:{ setProperty:(name,v
 // The voice service reads mediaDevices once at startup; a test can swap in a working getUserMedia.
 let getUserMedia = async () => { throw { name:'NotFoundError' }; };
 Object.defineProperty(globalThis,'navigator',{value:{mediaDevices:{getUserMedia:constraints=>getUserMedia(constraints)}},configurable:true,writable:true});
-globalThis.foundry = { applications:{ api:{ ApplicationV2:class {} } } };
+const rendered = [];
+globalThis.foundry = { applications:{ api:{ ApplicationV2:class { render(options){ rendered.push(this.constructor.name, options); } } } } };
 globalThis.game = {
   ready:false, user:users.get('gm'), users, combats:[],scenes:{current:{id:'scene'}},
   modules:new Map([['storyframe',{active:true}],['rp-frame',{}]]),storyframe:{},
@@ -75,7 +76,7 @@ test('v13/v14 token controls use isolated names and role-specific operations', (
     const controls=version===13 ? [tokens] : {tokens};
     runtime.tokenControls(controls);
     const tools=Array.isArray(tokens.tools)?tokens.tools:Object.values(tokens.tools);
-    assert.equal(tools.length,1);
+    assert.deepEqual(tools.map(tool=>tool.name),['rp-frame-scene','rp-frame-poll']);
     assert.equal(tools.some(tool=>tool.name==='rp-frame-manager'),false);
     assert.equal(tools.every(tool=>tool.name.startsWith('rp-frame-')),true);
   }
@@ -430,4 +431,25 @@ test('push-to-talk: holding the bound key while loud sends talking, releasing (o
     globalThis.clearInterval = realClear;
     globalThis.AudioContext = realAudio;
   }
+});
+
+test('poll commands authenticate the sender, persist, publish and open the poll window', async () => {
+  rendered.length = 0;
+  await handlers.get('pollCommand').call(context('a'),{type:'ask',question:'Camp?',options:['Cave','Inn']},session());
+  const polls = () => game.modules.get('rp-frame').api.getPolls();
+  const [poll] = polls();
+  assert.equal(poll.askerId,'a');
+  assert.deepEqual(values.get('poll').polls,[poll]);
+  assert.deepEqual(outbound.findLast(args=>args[0]==='state')[1].poll.polls,[poll]);
+  assert.equal(rendered[0],'PollApp');
+  await handlers.get('pollCommand').call(context('b'),{type:'ask',question:'Second?'},session());
+  assert.equal(polls().length,2);
+  await handlers.get('pollCommand').call(context('b'),{type:'close',pollId:poll.id},session());
+  assert.equal(polls()[0].open,true);
+  await handlers.get('pollCommand').call(context('b'),{type:'answer',pollId:poll.id,value:1},session()-1);
+  assert.deepEqual(polls()[0].answers,{});
+  await handlers.get('pollCommand').call(context('b'),{type:'answer',pollId:poll.id,value:1},session());
+  assert.deepEqual(polls()[0].answers,{b:1});
+  await runtime.pollCommand('clear',{pollId:poll.id});
+  assert.deepEqual(polls().map(other=>other.question),['Second?']);
 });

@@ -1,5 +1,13 @@
 import { waitingOrder } from './scene-state.mjs';
 
+/** Turn timer text: 0:42, 3:05, 1:02:09. */
+export function formatDuration(ms) {
+  const total = Math.floor(Math.max(0, ms) / 1000);
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -25,6 +33,8 @@ export function scenePresentation(state, { users, userId, isGM, connected }) {
     portrait: speaker?.avatar || speaker?.character?.img || '',
     tone: state.active && speaker ? 'speaker' : 'request',
     waiting: state.active && !isGM && !connected,
+    // When the speaker's turn began; null with no speaker.
+    since: state.active && speaker ? state.since : null,
     queue: waitingOrder(state).map((id, index) => ({ id, name: displayName(users.get(id)), position: index + 1, urgent: state.urgent.includes(id) }))
   };
 }
@@ -41,12 +51,16 @@ export class SceneView {
     const presentation = scenePresentation(state, context);
     if (!presentation || !this.host.showBanner()) {
       this.root?.remove(); this.root = null;
+      this.since = null;
+      this.tick();
     } else {
       if (!this.root) this.createBanner();
       // Update text in place: disconnect/reconnect never replaces the banner.
       this.root.dataset.tone = presentation.tone;
       this.root.dataset.waiting = String(presentation.waiting);
       this.text.textContent = presentation.text;
+      this.since = this.host.showTimer?.() ? presentation.since : null;
+      this.tick();
       this.avatar.hidden = !presentation.portrait;
       this.avatar.src = presentation.portrait;
       this.avatar.alt = '';
@@ -74,6 +88,8 @@ export class SceneView {
     this.root.setAttribute('aria-label', 'RP Frame');
     this.avatar = element('img', 'rp-frame-avatar');
     this.text = element('div', 'rp-frame-text');
+    this.timer = element('span', 'rp-frame-timer');
+    this.timer.title = 'How long the current speaker has had the spotlight';
     this.text.setAttribute('role', 'status');
     this.text.setAttribute('aria-live', 'polite');
     this.queue = element('div', 'rp-frame-queue');
@@ -81,7 +97,10 @@ export class SceneView {
     const resize = element('button', 'rp-frame-resize');
     resize.title = 'Resize RP Frame';
     resize.setAttribute('aria-label', resize.title);
-    this.root.append(this.avatar, this.text, this.queue, resize);
+    // Name and turn timer share a row so the timer never wraps under the name.
+    const heading = element('div', 'rp-frame-heading');
+    heading.append(this.text, this.timer);
+    this.root.append(this.avatar, heading, this.queue, resize);
     document.body.append(this.root);
     const layout = this.host.layout() ?? {};
     this.applySize(layout.width, layout.height);
@@ -111,6 +130,17 @@ export class SceneView {
     };
     this.root.addEventListener('pointerup', finish);
     this.root.addEventListener('pointercancel', finish);
+  }
+
+  /** Paint the turn timer; ticks every second only while a turn is being timed. */
+  tick() {
+    const timing = Number.isFinite(this.since) && Boolean(this.root);
+    if (this.timer) {
+      this.timer.hidden = !timing;
+      this.timer.textContent = timing ? formatDuration(Date.now() - this.since) : '';
+    }
+    if (timing && !this.ticker) this.ticker = setInterval(() => this.tick(), 1000);
+    else if (!timing && this.ticker) { clearInterval(this.ticker); this.ticker = null; }
   }
 
   applyPosition(x, y) {

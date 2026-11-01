@@ -1,10 +1,16 @@
 import { emptyScene, readScene, transition } from './scene-state.mjs';
 
-/** Serializes GM writes and persists before publishing. Injected host makes socket races testable. */
+const SCENE_RULES = { empty: emptyScene, read: readScene, transition };
+
+/**
+ * Serializes GM writes and persists before publishing. Injected host makes socket races testable.
+ * `rules` ({ empty, read, transition }) default to RP scenes; polls reuse the same pipeline.
+ */
 export class SceneController {
-  constructor(host) {
+  constructor(host, rules = SCENE_RULES) {
     this.host = host;
-    this.state = emptyScene();
+    this.rules = rules;
+    this.state = rules.empty();
     this.ready = false;
     this.authority = false;
     this.tail = Promise.resolve();
@@ -15,7 +21,7 @@ export class SceneController {
     this.ready = false;
     this.initializing = (async () => {
       await this.tail;
-      this.state = readScene(await this.host.load(), this.host.isPlayer);
+      this.state = this.rules.read(await this.host.load(), this.host.isPlayer);
       this.ready = true;
       this.authority = this.host.isAuthority();
       this.host.changed(this.state);
@@ -30,12 +36,13 @@ export class SceneController {
       if (!this.ready || !this.host.isAuthority()) return false;
       // A newly elected GM always reads persisted state before accepting commands.
       if (!this.authority) {
-        this.state = readScene(await this.host.load(), this.host.isPlayer);
+        this.state = this.rules.read(await this.host.load(), this.host.isPlayer);
         this.authority = true;
       }
-      const next = transition(this.state, command, actor, { isPlayer: this.host.isPlayer, combat: this.host.inCombat() });
+      const now = this.host.now();
+      const next = this.rules.transition(this.state, command, actor, { isPlayer: this.host.isPlayer, combat: this.host.inCombat(), now });
       if (next === this.state) return false;
-      next.revision = Math.max(this.host.now(), this.state.revision + 1);
+      next.revision = Math.max(now, this.state.revision + 1);
       await this.host.save(next);
       if (!this.host.isAuthority()) { this.authority = false; return false; }
       this.state = next;
@@ -48,7 +55,7 @@ export class SceneController {
   }
 
   accept(snapshot) {
-    const next = readScene(snapshot, this.host.isPlayer);
+    const next = this.rules.read(snapshot, this.host.isPlayer);
     if (next.revision < this.state.revision) return false;
     if (JSON.stringify(next) === JSON.stringify(this.state)) return true;
     this.state = next;

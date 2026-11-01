@@ -17,6 +17,15 @@
 .rp-frame-banner.is-positioned { transform: none; }
 .rp-frame-banner.is-sized { max-width: 94vw; }
 .rp-frame-text { font-size: calc(20px * var(--rp-frame-scale)); font-weight: 700; line-height: 1.2; text-shadow: 0 0 18px color-mix(in srgb, var(--rp-frame-color) 60%, transparent); }
+/* Never wider than the space beside the portrait (42px + 2px borders + banner gap), so name and timer stay next to it; a long name wraps instead. */
+.rp-frame-heading { display: flex; align-items: center; gap: calc(10px * var(--rp-frame-scale)); min-width: 0; max-width: calc(100% - 54px * var(--rp-frame-scale) - 4px); }
+.rp-frame-timer {
+  flex: 0 0 auto;
+  padding: calc(2px * var(--rp-frame-scale)) calc(8px * var(--rp-frame-scale)); border-radius: 6px;
+  background: color-mix(in srgb, var(--rp-frame-color) 16%, transparent); border: 1px solid color-mix(in srgb, var(--rp-frame-color) 45%, transparent);
+  font-size: calc(15px * var(--rp-frame-scale)); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.rp-frame-timer[hidden] { display: none; }
 .rp-frame-avatar {
   width: calc(42px * var(--rp-frame-scale)); height: calc(42px * var(--rp-frame-scale)); flex: 0 0 calc(42px * var(--rp-frame-scale)); box-sizing: content-box;
   border-radius: 50%; object-fit: cover; object-position: top; background: color-mix(in srgb, var(--rp-frame-color) 24%, transparent);
@@ -97,3 +106,68 @@
 .rp-frame-appearance-token { fill: #495057; }
 .rp-frame-appearance-camera { width: 64px; height: 48px; border-radius: 4px; background: #343a40; }
 .rp-frame-voice-threshold input[type=color] { flex: 0 0 48px; height: 24px; margin-left: auto; padding: 0; }
+/* Table polls: one card per poll. Tints mix with the text color so they work in light and dark themes. */
+.rp-frame-poll {
+  --rp-poll-accent: #51cf66;
+  --rp-poll-tint: color-mix(in srgb, currentColor 6%, transparent);
+  --rp-poll-line: color-mix(in srgb, currentColor 14%, transparent);
+  display: flex; flex-direction: column; gap: 12px; padding: 2px 0 4px;
+}
+.rp-frame-poll p { margin: 0; }
+.rp-frame-poll button { margin: 0; line-height: 1.2; }
+.rp-frame-poll-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rp-frame-poll-toolbar span { font-size: 12px; opacity: .7; }
+.rp-frame-poll .rp-frame-poll-new { flex: 0 0 auto; width: auto; height: auto; padding: 5px 12px; border-radius: 999px; color: var(--rp-poll-accent); background: color-mix(in srgb, var(--rp-poll-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--rp-poll-accent) 45%, transparent); font-weight: 600; }
+.rp-frame-poll-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--rp-poll-tint); border: 1px solid var(--rp-poll-line); border-left: 3px solid var(--rp-poll-accent); }
+.rp-frame-poll-card.closed { border-left-color: var(--rp-poll-line); }
+.rp-frame-poll-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.rp-frame-poll-head h3 { margin: 0; padding: 0; border: none; font-size: 15px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.rp-frame-poll-pill { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--rp-poll-accent); background: color-mix(in srgb, var(--rp-poll-accent) 14%, transparent); }
+.rp-frame-poll-card.closed .rp-frame-poll-pill { color: inherit; opacity: .6; background: var(--rp-poll-tint); }
+.rp-frame-poll-meta { display: flex; flex-direction: column; gap: 5px; font-size: 12px; opacity: .8; }
+.rp-frame-poll-progress { height: 3px; border-radius: 2px; background: var(--rp-poll-line); overflow: hidden; }
+.rp-frame-poll-progress > div { height: 100%; background: var(--rp-poll-accent); transition: width .25s; }
+/* A choice is both the vote button and its result bar. */
+.rp-frame-poll-options { display: flex; flex-direction: column; gap: 6px; }
+.rp-frame-poll .rp-frame-poll-option {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: auto; min-height: 38px;
+  padding: 8px 12px; overflow: hidden; text-align: left; color: inherit; background: var(--rp-poll-tint); border: 1px solid var(--rp-poll-line); border-radius: 8px; box-shadow: none; font-weight: 500;
+}
+.rp-frame-poll .rp-frame-poll-option:not(:disabled):hover { border-color: color-mix(in srgb, var(--rp-poll-accent) 60%, transparent); }
+.rp-frame-poll .rp-frame-poll-option:disabled { opacity: 1; cursor: default; }
+.rp-frame-poll .rp-frame-poll-option.mine { border-color: var(--rp-poll-accent); box-shadow: 0 0 0 1px var(--rp-poll-accent) inset; }
+.rp-frame-poll-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--rp-poll-accent) 22%, transparent); transition: width .3s; pointer-events: none; }
+.rp-frame-poll-option > span:not(.rp-frame-poll-fill) { position: relative; }
+.rp-frame-poll-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.rp-frame-poll-label i { margin-right: 6px; color: var(--rp-poll-accent); }
+.rp-frame-poll-who { font-size: 11px; font-weight: 400; opacity: .7; }
+.rp-frame-poll-count { flex: 0 0 auto; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rp-frame-poll-note { font-size: 12px; font-style: italic; opacity: .65; }
+.rp-frame-poll-answer { display: flex; gap: 6px; }
+.rp-frame-poll-answer input { flex: 1; min-width: 0; height: 34px; }
+.rp-frame-poll .rp-frame-poll-send { flex: 0 0 auto; width: auto; height: 34px; padding: 0 14px; }
+.rp-frame-poll-texts { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.rp-frame-poll-texts li { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--rp-poll-tint); overflow-wrap: anywhere; }
+.rp-frame-poll-texts li.mine { box-shadow: 0 0 0 1px color-mix(in srgb, var(--rp-poll-accent) 60%, transparent) inset; }
+.rp-frame-poll-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.rp-frame-poll .rp-frame-poll-actions button { flex: 0 0 auto; width: auto; height: auto; padding: 3px 8px; font-size: 12px; color: inherit; background: none; border: none; box-shadow: none; opacity: .7; }
+.rp-frame-poll .rp-frame-poll-actions button:hover { opacity: 1; background: var(--rp-poll-tint); }
+.rp-frame-poll .rp-frame-poll-actions [data-act=clear]:hover { color: #ff6b6b; }
+/* Ask form. */
+.rp-frame-poll-ask { border-left-color: var(--rp-poll-accent); }
+.rp-frame-poll-ask label, .rp-frame-poll-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; }
+.rp-frame-poll-ask input[type=text] { height: 34px; font-size: 14px; font-weight: 400; }
+.rp-frame-poll-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.rp-frame-poll .rp-frame-poll-preset { flex: 0 0 auto; width: auto; height: auto; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: inherit; background: var(--rp-poll-tint); border: 1px solid var(--rp-poll-line); box-shadow: none; }
+.rp-frame-poll .rp-frame-poll-preset:hover { border-color: color-mix(in srgb, var(--rp-poll-accent) 60%, transparent); }
+.rp-frame-poll .rp-frame-poll-preset.active { color: var(--rp-poll-accent); border-color: var(--rp-poll-accent); background: color-mix(in srgb, var(--rp-poll-accent) 12%, transparent); }
+.rp-frame-poll-choice { display: flex; gap: 6px; align-items: center; }
+.rp-frame-poll-choice input { flex: 1; min-width: 0; }
+.rp-frame-poll .rp-frame-poll-choice button { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; color: inherit; background: none; border: none; box-shadow: none; opacity: .6; }
+.rp-frame-poll .rp-frame-poll-choice button:hover { opacity: 1; color: #ff6b6b; }
+.rp-frame-poll .rp-frame-poll-add { align-self: flex-start; width: auto; height: auto; padding: 4px 8px; font-size: 12px; color: var(--rp-poll-accent); background: none; border: none; box-shadow: none; }
+.rp-frame-poll-ask .rp-frame-voice-check { font-size: 13px; font-weight: 400; flex-direction: row; }
+.rp-frame-poll-submit { display: flex; justify-content: flex-end; gap: 6px; }
+.rp-frame-poll .rp-frame-poll-submit button { flex: 0 0 auto; width: auto; height: auto; padding: 6px 14px; }
+.rp-frame-poll .rp-frame-poll-submit .rp-frame-primary { background: #153925; border-color: #51cf66; color: #e8ffe9; font-weight: 600; }
+.rp-frame-poll-empty { text-align: center; font-size: 13px; opacity: .65; padding: 8px 0; }

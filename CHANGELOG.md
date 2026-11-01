@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add table polls: anyone can ask a question with preset answers (Yes / No, 1–5 and more), their own choices or free-text answers, several polls can run at once, players answer in a poll window that opens for them, and results update live. GMs don't vote; they watch the results. The asker or a GM can close or remove each poll; results can hide names.
+- Add a turn timer to the speaker banner (GMs only): how long the current speaker has had the spotlight, restarting with every new speaker.
+
 ## 1.0.0
 
 First stable release, now listed on foundryvtt.com. No changes since 0.2.1.

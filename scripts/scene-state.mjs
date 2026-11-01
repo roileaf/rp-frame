@@ -1,6 +1,7 @@
 /** RP scene rules. No Foundry or transport dependencies. */
 export function emptyScene() {
-  return { version: 1, revision: 0, active: false, participants: [], urgent: [], speaker: null };
+  // `since`: when the current speaker's turn began (GM clock), for the banner's turn timer.
+  return { version: 1, revision: 0, active: false, participants: [], urgent: [], speaker: null, since: null };
 }
 
 export function readScene(input, isPlayer = () => true) {
@@ -13,6 +14,7 @@ export function readScene(input, isPlayer = () => true) {
   state.speaker = state.active && state.participants.includes(input.speaker) ? input.speaker : null;
   state.urgent = [...new Set(Array.isArray(input.urgent) ? input.urgent : [])]
     .filter(id => state.participants.includes(id) && id !== state.speaker);
+  state.since = state.speaker && Number.isSafeInteger(input.since) ? input.since : null;
   return state;
 }
 
@@ -22,13 +24,14 @@ export function waitingOrder(state) {
 }
 
 /** Only authenticated GMs may manage others. Players act on themselves. */
-export function transition(previous, command, actor, { isPlayer = () => true, combat = false } = {}) {
+export function transition(previous, command, actor, { isPlayer = () => true, combat = false, now = 0 } = {}) {
   if (!actor?.id || !command || typeof command.type !== 'string') return previous;
   const gmActions = ['start', 'end', 'choose', 'remove', 'next'];
   if (gmActions.includes(command.type) && !actor.isGM) return previous;
   const id = actor.isGM ? command.userId : actor.id;
   if (combat && !['end', 'leave', 'remove'].includes(command.type)) return previous;
   const state = readScene(previous, isPlayer);
+  const speaker = state.speaker;
   const clear = () => Object.assign(state, { active: false, participants: [], urgent: [], speaker: null });
   const advance = () => {
     state.speaker = waitingOrder(state)[0] ?? null;
@@ -87,5 +90,7 @@ export function transition(previous, command, actor, { isPlayer = () => true, co
     }
     default: return previous;
   }
+  // A new speaker starts a new turn; the timer keeps no history.
+  if (state.speaker !== speaker) state.since = state.speaker ? now : null;
   return JSON.stringify(state) === JSON.stringify(previous) ? previous : state;
 }
