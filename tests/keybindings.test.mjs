@@ -13,11 +13,12 @@ function fixture() {
   return { host, bindings, sent, press: (id, repeat = false) => bindings.get(id).onDown({ event: { repeat } }) };
 }
 
-test('original H/X/Space/Shift+Space defaults are editable with exact modifiers', () => {
+test('original H/X/Space/Shift+Space defaults plus Z for hold on are editable with exact modifiers', () => {
   const { bindings } = fixture();
   assert.deepEqual([...bindings].map(([id, data]) => [id, data.editable]), [
     ['raise-hand', [{ key: 'KeyH', modifiers: [] }]],
     ['show-xcard', [{ key: 'KeyX', modifiers: [] }]],
+    ['hold-on', [{ key: 'KeyZ', modifiers: [] }]],
     ['snatch-spotlight', [{ key: 'Space', modifiers: [] }]],
     ['delay-spotlight', [{ key: 'Space', modifiers: ['Shift'] }]]
   ]);
@@ -89,4 +90,20 @@ test('held shortcuts dispatch once; startup/combat/role guards reject invalid ac
   assert.equal(press('show-xcard'), false);
   assert.equal(press('snatch-spotlight'), false);
   assert.equal(shortcutAction('unknown', host), null);
+});
+
+test('Z toggles hold on, which clears urgent; not for the speaker, GMs or during combat', () => {
+  const { host, press } = fixture();
+  assert.equal(press('show-xcard'), true);
+  assert.equal(press('hold-on'), true);
+  assert.deepEqual([host.state.hold, host.state.urgent], [['a'], []]);
+  press('hold-on');
+  assert.deepEqual(host.state.hold, []);
+  host.combat = true;
+  assert.equal(press('hold-on'), false);
+  host.combat = false;
+  host.state = transition(host.state, { type: 'start' }, { id: 'gm', isGM: true });
+  assert.equal(press('hold-on'), false);
+  host.user = { id: 'gm', isGM: true };
+  assert.equal(press('hold-on'), false);
 });

@@ -2,6 +2,7 @@
   --rp-frame-green: #51cf66;
   --rp-frame-gold: #ffd43b;
   --rp-frame-red: #ff0000;
+  --rp-frame-blue: #4dabf7;
   --rp-frame-color: var(--rp-frame-green);
   --rp-frame-scale: 1;
   position: fixed; z-index: 2147483647; top: 28px; left: 50%; transform: translateX(-50%);
@@ -43,6 +44,9 @@
 .rp-frame-chip:not(:disabled) { cursor: pointer; }
 .rp-frame-chip:not(:disabled):hover, .rp-frame-chip:focus-visible { border-color: color-mix(in srgb, var(--rp-frame-green) 70%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--rp-frame-green) 28%, transparent); outline: none; }
 .rp-frame-chip.urgent { background: color-mix(in srgb, var(--rp-frame-red) 18%, transparent); border-color: color-mix(in srgb, var(--rp-frame-red) 65%, transparent); }
+/* Hold on: same place in the queue, blue with a pause mark. */
+.rp-frame-chip.hold { background: color-mix(in srgb, var(--rp-frame-blue) 20%, transparent); border-color: color-mix(in srgb, var(--rp-frame-blue) 70%, transparent); }
+.rp-frame-chip.hold > span:last-child::after { content: " ⏸"; color: var(--rp-frame-blue); }
 .rp-frame-chip > span:last-child { overflow: hidden; text-overflow: ellipsis; }
 .rp-frame-position { display: inline-grid; place-items: center; width: calc(18px * var(--rp-frame-scale)); height: calc(18px * var(--rp-frame-scale)); background: #ffffff29; border-radius: 50%; font-size: calc(11px * var(--rp-frame-scale)); line-height: 1; }
 .rp-frame-resize {
@@ -52,6 +56,7 @@
 .rp-frame-badge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 5px; padding: 0 4px; border: 1px solid #ffd43b; border-radius: 6px; color: #fff7db; background: #28271b; font-weight: 700; }
 .rp-frame-badge.speaking { background: #153925; border-color: #51cf66; color: #51cf66; }
 .rp-frame-badge.urgent { background: #401d23; border-color: #ff0000; color: #ffb5b9; }
+.rp-frame-badge.hold { background: #172b45; border-color: #4dabf7; color: #a5d8ff; }
 /* Bottom-right, stacked above Foundry's connection dot (top-left holds the camera controls). */
 .camera-view > .rp-frame-badge { position: absolute; z-index: 5; right: 6px; bottom: 32px; margin: 0; pointer-events: none; }
 .camera-view.rp-frame-speaking { outline: 3px solid #51cf66; outline-offset: -3px; box-shadow: 0 0 16px 4px rgb(81 207 102 / 55%); transition: box-shadow .25s, outline-color .25s; }

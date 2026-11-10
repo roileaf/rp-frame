@@ -13,6 +13,9 @@ export function shortcutAction(name, { state, user, ready, combat }, repeat = fa
     case 'show-xcard':
       if (user.isGM || speaking || (combat && !state.urgent.includes(user.id))) return null;
       return 'urgent';
+    case 'hold-on':
+      if (user.isGM || speaking || combat) return null;
+      return 'hold';
     case 'snatch-spotlight':
       if (user.isGM) return state.active ? 'end' : !combat && state.participants.length ? 'start' : null;
       if (!state.active || !joined || combat) return null;
@@ -28,6 +31,7 @@ export function registerRpKeybindings(host) {
   const shortcuts = [
     ['raise-hand', 'Raise / lower hand', 'Request or leave the RP queue. Active speakers finish with Space.', 'KeyH', []],
     ['show-xcard', 'Urgent speak', 'Toggle an urgent RP speaking request.', 'KeyX', []],
+    ['hold-on', 'Hold on, don\'t go on yet', 'Toggle asking not to change the subject yet. You keep your place in the queue.', 'KeyZ', []],
     ['snatch-spotlight', 'Take / finish spotlight', 'Take the available spotlight or finish speaking. GMs start or end the RP scene.', 'Space', []],
     ['delay-spotlight', 'Delay turn', 'Delay your current speaking turn.', 'Space', ['Shift']]
   ];

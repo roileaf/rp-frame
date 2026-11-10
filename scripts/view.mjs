@@ -1,5 +1,7 @@
 import { waitingOrder } from './scene-state.mjs';
 
+export const HOLD_TEXT = 'Hold on, don\'t go on yet';
+
 /** Turn timer text: 0:42, 3:05, 1:02:09. */
 export function formatDuration(ms) {
   const total = Math.floor(Math.max(0, ms) / 1000);
@@ -35,7 +37,7 @@ export function scenePresentation(state, { users, userId, isGM, connected }) {
     waiting: state.active && !isGM && !connected,
     // When the speaker's turn began; null with no speaker.
     since: state.active && speaker ? state.since : null,
-    queue: waitingOrder(state).map((id, index) => ({ id, name: displayName(users.get(id)), position: index + 1, urgent: state.urgent.includes(id) }))
+    queue: waitingOrder(state).map((id, index) => ({ id, name: displayName(users.get(id)), position: index + 1, urgent: state.urgent.includes(id), hold: (state.hold ?? []).includes(id) }))
   };
 }
 
@@ -66,9 +68,10 @@ export class SceneView {
       this.avatar.alt = '';
       this.queue.replaceChildren();
       for (const item of presentation.queue) {
-        const chip = element('button', `rp-frame-chip${item.urgent ? ' urgent' : ''}`);
+        const chip = element('button', `rp-frame-chip${item.urgent ? ' urgent' : item.hold ? ' hold' : ''}`);
         chip.type = 'button';
         chip.title = context.isGM ? `Choose ${item.name}; right-click to remove` : `${item.name}, position ${item.position}`;
+        if (item.hold) chip.title += ` — ${HOLD_TEXT}`;
         chip.append(element('span', 'rp-frame-position', String(item.position)), element('span', '', item.name));
         chip.disabled = !context.isGM;
         chip.addEventListener('click', event => { event.stopPropagation(); void this.host.command('choose', item.id); });
@@ -169,8 +172,10 @@ export class SceneView {
       if (!state.participants.includes(id)) continue;
       const speaking = state.active && state.speaker === id;
       const urgent = state.urgent.includes(id);
-      const badge = element('span', `rp-frame-badge${speaking ? ' speaking' : urgent ? ' urgent' : ''}`, speaking ? '●' : urgent ? '!' : String(waitingOrder(state).indexOf(id) + 1));
-      badge.title = speaking ? 'Speaking' : urgent ? 'Urgent speak' : 'RP queue';
+      // Holding keeps the queue number; only the color and label change.
+      const hold = !urgent && (state.hold ?? []).includes(id);
+      const badge = element('span', `rp-frame-badge${speaking ? ' speaking' : urgent ? ' urgent' : hold ? ' hold' : ''}`, speaking ? '●' : urgent ? '!' : String(waitingOrder(state).indexOf(id) + 1));
+      badge.title = speaking ? 'Speaking' : urgent ? 'Urgent speak' : hold ? HOLD_TEXT : 'RP queue';
       badge.setAttribute('aria-label', badge.title);
       // Cameras: pin the badge to the video's corner (CSS .camera-view > .rp-frame-badge) instead of
       // inside the name label, where it overlapped the player's name. Player list: after the name.

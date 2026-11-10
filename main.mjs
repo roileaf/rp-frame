@@ -315,7 +315,7 @@ export async function initialize() {
   const api = game.modules.get(MODULE_ID).api = {
     getState: () => structuredClone(controller.state), isGmConnected: connected,
     command, start: () => command('start'), end: () => command('end'),
-    join: () => command('join'), finish: () => command('finish'), urgent: () => command('urgent'),
+    join: () => command('join'), finish: () => command('finish'), urgent: () => command('urgent'), hold: () => command('hold'),
     getPolls: () => structuredClone(polls.state.polls), poll: pollCommand, openPoll
   };
   if (game.modules.get('storyframe')?.active && game.storyframe) game.storyframe.rpFrame = api;
@@ -349,6 +349,7 @@ export function tokenControls(controls) {
     const joined = state?.participants.includes(game.user.id);
     tools.push({ name: 'rp-frame-join', title: speaking ? 'RP Frame — finish speaking' : joined ? 'RP Frame — leave queue' : 'RP Frame — join scene', icon: speaking ? 'fas fa-microphone' : 'fas fa-hand', onClick: () => command(speaking ? 'finish' : joined ? 'leave' : 'join') },
       { name: 'rp-frame-urgent', title: 'RP Frame — urgent speak', icon: 'fas fa-exclamation', onClick: () => command('urgent') },
+      { name: 'rp-frame-hold', title: 'RP Frame — hold on, don\'t go on yet', icon: 'fas fa-pause', visible: !speaking, onClick: () => command('hold') },
       { name: 'rp-frame-delay', title: 'RP Frame — delay turn', icon: 'fas fa-forward', visible: speaking, onClick: () => command('delay') });
   }
   tools.push({ name: 'rp-frame-poll', title: 'RP Frame — table poll', icon: 'fas fa-square-poll-vertical', onClick: openPoll });

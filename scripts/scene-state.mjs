@@ -1,7 +1,8 @@
 /** RP scene rules. No Foundry or transport dependencies. */
 export function emptyScene() {
+  // `hold`: participants asking not to change the subject yet. A participant is urgent or holding, never both.
   // `since`: when the current speaker's turn began (GM clock), for the banner's turn timer.
-  return { version: 1, revision: 0, active: false, participants: [], urgent: [], speaker: null, since: null };
+  return { version: 1, revision: 0, active: false, participants: [], urgent: [], hold: [], speaker: null, since: null };
 }
 
 export function readScene(input, isPlayer = () => true) {
@@ -14,10 +15,13 @@ export function readScene(input, isPlayer = () => true) {
   state.speaker = state.active && state.participants.includes(input.speaker) ? input.speaker : null;
   state.urgent = [...new Set(Array.isArray(input.urgent) ? input.urgent : [])]
     .filter(id => state.participants.includes(id) && id !== state.speaker);
+  state.hold = [...new Set(Array.isArray(input.hold) ? input.hold : [])]
+    .filter(id => state.participants.includes(id) && id !== state.speaker && !state.urgent.includes(id));
   state.since = state.speaker && Number.isSafeInteger(input.since) ? input.since : null;
   return state;
 }
 
+/** Urgent first, then everyone else in queue order. Holding the subject keeps your place. */
 export function waitingOrder(state) {
   const waiting = state.participants.filter(id => id !== state.speaker);
   return [...waiting.filter(id => state.urgent.includes(id)), ...waiting.filter(id => !state.urgent.includes(id))];
@@ -32,18 +36,23 @@ export function transition(previous, command, actor, { isPlayer = () => true, co
   if (combat && !['end', 'leave', 'remove'].includes(command.type)) return previous;
   const state = readScene(previous, isPlayer);
   const speaker = state.speaker;
-  const clear = () => Object.assign(state, { active: false, participants: [], urgent: [], speaker: null });
+  const clear = () => Object.assign(state, { active: false, participants: [], urgent: [], hold: [], speaker: null });
   const advance = () => {
     state.speaker = waitingOrder(state)[0] ?? null;
     state.urgent = state.urgent.filter(userId => userId !== state.speaker);
   };
   switch (command.type) {
     case 'join':
-    case 'urgent': {
+    case 'urgent':
+    case 'hold': {
       if (!isPlayer(id) || id === state.speaker) return previous;
       if (!state.participants.includes(id)) state.participants.push(id);
-      if (command.type === 'urgent') state.urgent = state.urgent.includes(id)
-        ? state.urgent.filter(userId => userId !== id) : [...state.urgent, id];
+      // Each toggles its own flag and clears the other.
+      if (command.type !== 'join') {
+        const [flag, other] = command.type === 'urgent' ? ['urgent', 'hold'] : ['hold', 'urgent'];
+        state[flag] = state[flag].includes(id) ? state[flag].filter(userId => userId !== id) : [...state[flag], id];
+        state[other] = state[other].filter(userId => userId !== id);
+      }
       break;
     }
     case 'leave':
@@ -90,6 +99,8 @@ export function transition(previous, command, actor, { isPlayer = () => true, co
     }
     default: return previous;
   }
+  // Leaving the queue or getting the spotlight drops a hold, as it does an urgent request.
+  state.hold = state.hold.filter(userId => state.participants.includes(userId) && userId !== state.speaker);
   // A new speaker starts a new turn; the timer keeps no history.
   if (state.speaker !== speaker) state.since = state.speaker ? now : null;
   return JSON.stringify(state) === JSON.stringify(previous) ? previous : state;

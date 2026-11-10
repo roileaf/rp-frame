@@ -129,7 +129,7 @@ test('init registers original shortcuts under RP Frame namespace; GM Space uses 
     assert.equal(module, 'rp-frame'); bindings.set(id, data);
   } };
   hooks.get('init')();
-  assert.equal(bindings.size, 5);
+  assert.equal(bindings.size, 6);
   await runtime.command('join', 'a');
   assert.equal(bindings.get('snatch-spotlight').onDown({ event: { repeat: false } }), true);
   // The callback must return synchronously while the serialized save completes.
