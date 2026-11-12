@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1
 
 - Add **Hold on, don't go on yet**: players ask the table not to change the subject. They keep their place in the queue (urgent still jumps ahead), and their queue chip and badge turn blue. Toggle it from token controls or with **Z**.
 - Add table polls: anyone can ask a question with preset answers (Yes / No, 1–5 and more), their own choices or free-text answers, several polls can run at once, players answer in a poll window that opens for them, and results update live. GMs don't vote; they watch the results. The asker or a GM can close or remove each poll; results can hide names.
