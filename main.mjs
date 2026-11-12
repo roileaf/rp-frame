@@ -13,9 +13,12 @@ import { VoiceService } from './scripts/voice-service.mjs';
 import { VoiceGlow, createPixiGlow, drawPixiGlow, fadeGlow, applyVoiceCameras, voiceGlowIds, glowStyle, normalizeAppearances, DEFAULT_APPEARANCES } from './scripts/voice-glow.mjs';
 import { voiceSettingsApp, refreshVoiceSettings, refreshVoiceMeter } from './scripts/voice-settings-app.mjs';
 import { PushToTalk, PTT_MOUSE } from './scripts/voice-ptt.mjs';
+import { POLL_RULES } from './scripts/poll-state.mjs';
+import { pollApp } from './scripts/poll-app.mjs';
 
 export const MODULE_ID = 'rp-frame';
-let socket, controller, connection, view, spotlight, highlight, pollTimer, voice, voiceGlow, appearances = normalizeAppearances();
+let socket, controller, polls, connection, view, spotlight, highlight, pollTimer, voice, voiceGlow, appearances = normalizeAppearances();
+const seenPolls = new Set();
 const roster = new VoiceRoster();
 const session = Date.now() + Math.random();
 let initialized = false;
@@ -28,7 +31,7 @@ const setting = key => game.settings.get(MODULE_ID, key);
 const sender = context => context?.socketdata?.userId;
 const updateVoice = () => voice?.update().catch(report);
 const CONSENT_HTML = '<p>Your GM turned on voice glow: your character\'s token glows while you talk.</p><p>Foundry will listen to your mic\'s <strong>volume level only</strong>. Nothing is recorded or sent; only "talking / not talking" is shared.</p>';
-const packet = () => ({ session, ready: Boolean(controller?.ready && isAuthority()), state: controller?.state });
+const packet = () => ({ session, ready: Boolean(controller?.ready && isAuthority()), state: controller?.state, poll: polls?.state });
 // Push-to-talk: with voicePtt on, voice glow needs the talk key or mouse button held as well as speech.
 const ptt = new PushToTalk({ onChange: () => { voice?.refreshGate(); refreshVoiceMeter(); } });
 // DOM events can arrive before init registers the setting.
@@ -66,6 +69,24 @@ function renderVoice() {
   const cameraIds = setting('voiceShowCamera') ? voiceGlowIds(talkingIds, state) : new Set();
   applyVoiceCameras(document, cameraIds, game.user.isGM && setting('voiceGlow') ? roster.noMicIds() : null);
 }
+
+/** Open the poll window when an open poll appears that this user hasn't answered (also after a refresh); otherwise repaint it. */
+function pollChanged(state) {
+  // GMs don't answer, so their window opens once per new poll to watch results.
+  const fresh = state.polls.some(poll => poll.open && !seenPolls.has(poll.id) && !Object.hasOwn(poll.answers, game.user.id));
+  for (const poll of state.polls) seenPolls.add(poll.id);
+  if (fresh && initialized) openPoll();
+  globalThis.foundry?.applications?.instances?.get?.('rp-frame-poll')?.pollsChanged?.(state.polls);
+  Hooks.callAll('rpFramePollChanged', structuredClone(state));
+}
+
+export function openPoll() {
+  const App = pollApp();
+  if (!App) return;
+  const app = globalThis.foundry?.applications?.instances?.get?.('rp-frame-poll') ?? new App();
+  void app.render({ force: true });
+}
+
 
 /** Fade a glow out, then remove it; the token or glow may be destroyed meanwhile. */
 function detachGlow(token, glow) {
@@ -114,6 +135,7 @@ export function registerSettings() {
   register('badges', { name: 'RP Frame: player and camera badges', scope: 'client', config: true, type: Boolean, default: true, onChange: refresh });
   register('tokenHighlight', { name: 'RP Frame: highlight speaker token', hint: 'Draw a green ring around the speaking player\'s character tokens.', scope: 'client', config: true, type: Boolean, default: true, onChange: refresh });
   register('linkSpotlight', { name: 'RP Frame: follow StoryFrame spotlight', hint: 'When optional StoryFrame is enabled, highlight existing speakers matching each player character. Restore the previous spotlight when the RP scene ends.', scope: 'world', config: true, type: Boolean, default: true, onChange: () => { if (controller) void spotlight?.sync(controller.state); } });
+  register('poll', { scope: 'world', config: false, type: Object, default: {} });
   register('stopForCombat', { name: 'RP Frame: end scene when combat starts', scope: 'world', config: true, type: Boolean, default: true });
   register('voiceGlow', { name: 'RP Frame: voice glow', hint: 'Players\' character tokens and camera tiles glow while they talk. Each player\'s browser measures their own mic level; no audio is sent or recorded.', scope: 'world', config: false, type: Boolean, default: false, onChange: () => { updateVoice(); renderVoice(); refreshVoiceSettings(); } });
   register('voiceOptOut', { name: 'RP Frame: don\'t use my mic for voice glow', scope: 'client', config: false, type: Boolean, default: false, onChange: () => { updateVoice(); refreshVoiceSettings(); } });
@@ -159,15 +181,23 @@ export function registerSocket() {
       catch (error) { report(error); }
     }
   });
+  socket.register('pollCommand', async function(command, expectedSession) {
+    if (!isAuthority() || !polls?.ready || expectedSession !== session) return;
+    const actor = game.users.get(sender(this));
+    if (actor) {
+      try { await polls.enqueue(command, { id: actor.id, isGM: actor.isGM }); }
+      catch (error) { report(error); }
+    }
+  });
   socket.register('state', function(data) {
     const from = sender(this);
-    if (!isAuthority() && controller && connection?.accept(from, data, game.users.activeGM?.id)) controller.accept(data.state);
+    if (!isAuthority() && controller && connection?.accept(from, data, game.users.activeGM?.id)) accept(data);
   });
   socket.register('ping', async function(nonce) {
     if (!isAuthority() || !controller?.ready) return;
     // A GM elected after another disconnects must first recover durable state.
     if (!controller.authority) {
-      try { await controller.initialize(); }
+      try { await controller.initialize(); await polls?.initialize(); }
       catch (error) { report(error); return; }
       if (!isAuthority()) return;
     }
@@ -175,7 +205,7 @@ export function registerSocket() {
     if (requester) socket.executeForUsers('pong', [requester], nonce, packet());
   });
   socket.register('pong', function(nonce, data) {
-    if (connection?.accept(sender(this), data, game.users.activeGM?.id, nonce)) controller?.accept(data.state);
+    if (connection?.accept(sender(this), data, game.users.activeGM?.id, nonce)) accept(data);
   });
   // Only {talking, mic} ever arrives here; socketlib authenticates the sender, not the payload.
   socket.register('voice', function(payload) {
@@ -191,6 +221,25 @@ export function registerSocket() {
     connection?.poll(game.users.activeGM?.id, true);
   });
   if (game.ready) void initialize();
+}
+
+/** A GM packet carries the scene and, from GMs running 1.1.0 or later, the poll. */
+function accept(data) {
+  controller?.accept(data.state);
+  if (data.poll) polls?.accept(data.poll);
+}
+
+/** Poll commands: ask {question, options, anonymous}, answer {pollId, value}, close {pollId}, clear {pollId}. */
+export async function pollCommand(type, data = {}) {
+  if (!polls?.ready) return false;
+  const command = { ...data, type };
+  if (isAuthority()) {
+    try { return await polls.enqueue(command, { id: game.user.id, isGM: true }); }
+    catch (error) { report(error); return false; }
+  }
+  if (!connected()) { ui.notifications?.warn('Waiting for GM'); return false; }
+  socket.executeForAllGMs('pollCommand', command, connection?.session);
+  return true;
 }
 
 export async function command(type, userId = null) {
@@ -219,7 +268,8 @@ export async function initialize() {
   });
   view = new SceneView({
     context: () => ({ users: game.users, userId: game.user.id, isGM: game.user.isGM, connected: connected() }),
-    command, showBanner: () => setting('banner'), showBadges: () => setting('badges'),
+    // The turn timer is for the GM: players don't see a clock on their own turn.
+    command, showBanner: () => setting('banner'), showTimer: () => game.user.isGM, showBadges: () => setting('badges'),
     layout: () => setting('layout'), saveLayout: data => game.settings.set(MODULE_ID, 'layout', data)
   });
   highlight = new SpeakerHighlight({
@@ -251,20 +301,30 @@ export async function initialize() {
     load: () => setting('scene'), save: data => game.settings.set(MODULE_ID, 'scene', data),
     changed, publish: () => socket.executeForOthers('state', packet()), error: report
   });
-  try { await controller.initialize(); }
+  polls = new SceneController({
+    isAuthority, isPlayer: id => Boolean(game.users.get(id)), inCombat: () => false, now: () => Date.now(),
+    load: () => setting('poll'), save: data => game.settings.set(MODULE_ID, 'poll', data),
+    changed: pollChanged, publish: () => socket.executeForOthers('state', packet()), error: report
+  }, POLL_RULES);
+  pollApp({
+    polls: () => polls.state.polls, userId: () => game.user.id, isGM: () => game.user.isGM, users: () => game.users,
+    voters: () => game.users.filter(user => user.active && !user.isGM).length, command: pollCommand
+  });
+  try { await controller.initialize(); await polls.initialize(); }
   catch (error) { initialized = false; report(error); return; }
   const api = game.modules.get(MODULE_ID).api = {
     getState: () => structuredClone(controller.state), isGmConnected: connected,
     command, start: () => command('start'), end: () => command('end'),
-    join: () => command('join'), finish: () => command('finish'), urgent: () => command('urgent')
+    join: () => command('join'), finish: () => command('finish'), urgent: () => command('urgent'), hold: () => command('hold'),
+    getPolls: () => structuredClone(polls.state.polls), poll: pollCommand, openPoll
   };
   if (game.modules.get('storyframe')?.active && game.storyframe) game.storyframe.rpFrame = api;
   const poll = () => {
     if (roster.prune(Date.now())) renderVoice();
     if (!isAuthority()) {
-      controller.authority = false;
+      controller.authority = polls.authority = false;
       connection.poll(game.users.activeGM?.id);
-    } else if (!controller.authority) void controller.initialize().catch(report);
+    } else if (!controller.authority || !polls.authority) void controller.initialize().then(() => polls.initialize()).catch(report);
     else if (controller.state.active) void spotlight.sync(controller.state);
   };
   poll();
@@ -289,8 +349,10 @@ export function tokenControls(controls) {
     const joined = state?.participants.includes(game.user.id);
     tools.push({ name: 'rp-frame-join', title: speaking ? 'RP Frame — finish speaking' : joined ? 'RP Frame — leave queue' : 'RP Frame — join scene', icon: speaking ? 'fas fa-microphone' : 'fas fa-hand', onClick: () => command(speaking ? 'finish' : joined ? 'leave' : 'join') },
       { name: 'rp-frame-urgent', title: 'RP Frame — urgent speak', icon: 'fas fa-exclamation', onClick: () => command('urgent') },
+      { name: 'rp-frame-hold', title: 'RP Frame — hold on, don\'t go on yet', icon: 'fas fa-pause', visible: !speaking, onClick: () => command('hold') },
       { name: 'rp-frame-delay', title: 'RP Frame — delay turn', icon: 'fas fa-forward', visible: speaking, onClick: () => command('delay') });
   }
+  tools.push({ name: 'rp-frame-poll', title: 'RP Frame — table poll', icon: 'fas fa-square-poll-vertical', onClick: openPoll });
   for (const tool of tools) {
     tool.button = true;
     tool.visible ??= true;
@@ -320,7 +382,7 @@ Hooks.on('userConnected', (user, isConnected) => {
   if (!isConnected) { if (roster.remove(user?.id)) renderVoice(); }
   else if (setting('voiceGlow')) voice?.announce();
   if (!controller?.ready) return;
-  if (!isAuthority()) controller.authority = false;
+  if (!isAuthority()) controller.authority = polls.authority = false;
   if (!isAuthority()) connection.poll(game.users.activeGM?.id, true);
   refresh();
 });

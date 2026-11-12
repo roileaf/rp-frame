@@ -5,7 +5,7 @@
 <title>RP Frame browser test</title>
 <link rel="stylesheet" href="../../styles/rp-frame.css">
 <style>
-body{margin:0;background:radial-gradient(ellipse at 35% 35%,#223c32,#0b1512 70%);color:#eaf1e9;font:16px system-ui;min-height:100vh}header.test-header{position:absolute;bottom:30px;left:90px;padding:20px;background:#15251eee;border-radius:10px}header.test-header h1{margin:0 0 10px;font-size:23px}#tools{position:absolute;top:170px;left:90px;display:flex;flex-direction:column;gap:8px;align-items:start}#notice{color:#ddba58;max-width:500px}#players-active{position:absolute;bottom:30px;right:30px}#players-active li{list-style:none;padding:8px;background:#15251e}.test-caption{color:#a5b9ac;margin:8px 0}
+body{margin:0;background:radial-gradient(ellipse at 35% 35%,#223c32,#0b1512 70%);color:#eaf1e9;font:16px system-ui;min-height:100vh}header.test-header{position:absolute;bottom:30px;left:90px;padding:20px;background:#15251eee;border-radius:10px}header.test-header h1{margin:0 0 10px;font-size:23px}#tools{position:absolute;top:170px;left:90px;display:flex;flex-direction:column;gap:8px;align-items:start}#notice{color:#ddba58;max-width:500px}#players-active{position:absolute;bottom:30px;right:30px}#players-active li{list-style:none;padding:8px;background:#15251e}.test-caption{color:#a5b9ac;margin:8px 0}.test-window{position:fixed;top:120px;right:40px;z-index:100;background:#1d2420;border:1px solid #3c4a42;border-radius:8px;box-shadow:0 10px 30px #000a;font-size:14px}.test-window-title{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#111816;border-radius:8px 8px 0 0;font-weight:bold}.test-window .window-content{padding:10px}.test-window button{padding:4px 8px;color:inherit;background:#2a332e;border:1px solid #4a5a50;border-radius:4px;cursor:pointer}.test-window input,.test-window textarea{box-sizing:border-box;width:100%;padding:4px;color:inherit;background:#0d1411;border:1px solid #4a5a50;border-radius:4px}.test-window input[type=checkbox]{width:auto}
 </style>
 <nav id="tools" aria-label="Token controls"></nav>
 <header class="test-header"><h1>RP Frame browser test</h1><p id="role"></p><p class="test-caption">Production module · isolated test world</p><p id="sf-spotlight"></p><p id="notice" role="alert"></p></header>
@@ -22,6 +22,32 @@ const users = new Map([
   ['p2',{id:'p2',name:'Ben',isGM:false,active:true,character:{uuid:'Actor.p2',name:'Ed Carver',img:icon('#739ea4')}}]
 ]);
 users.activeGM = users.get('gm'); // Intentionally stays logged in while its module socket reloads.
+users.filter = predicate => [...users.values()].filter(predicate);
+// Minimal ApplicationV2: a fixed window with a title bar; enough for the poll, talk timer and voice glow windows.
+const instances = new Map();
+class ApplicationV2 {
+  static DEFAULT_OPTIONS = {};
+  get options() { return this.constructor.DEFAULT_OPTIONS; }
+  get rendered() { return Boolean(this.frame); }
+  async render() {
+    if (!this.frame) {
+      this.frame = document.createElement('section');
+      this.frame.className = `test-window ${(this.options.classes ?? []).join(' ')}`;
+      this.frame.style.width = `${this.options.position?.width ?? 400}px`;
+      this.frame.innerHTML = `<header class="test-window-title"><span>${this.options.window?.title ?? ''}</span><button type="button" aria-label="Close">×</button></header><div class="window-content"></div>`;
+      this.frame.querySelector('header button').addEventListener('click', () => this.close());
+      document.body.append(this.frame);
+      if (this.options.id) instances.set(this.options.id, this);
+      this._onFirstRender?.();
+    }
+    this.element = this.frame;
+    this._replaceHTML(await this._renderHTML(), this.frame.querySelector('.window-content'));
+    this._onRender?.();
+    return this;
+  }
+  async close() { this.frame?.remove(); this.frame = null; instances.delete(this.options.id); this._onClose?.(); }
+}
+window.foundry = { applications: { instances, api: { ApplicationV2, DialogV2: { confirm: async ({ content }) => confirm(content.replace(/<[^>]+>/g, '')) } } } };
 const hooks = new Map();
 window.Hooks = {
   on(name,callback){const list=hooks.get(name)||[];list.push(callback);hooks.set(name,list);},
@@ -40,6 +66,7 @@ window.game = {
   keybindings:{register(module,name,data){if(module!=='rp-frame')throw Error('Unexpected keybinding namespace');keybindings.set(name,data);}},
   settings:{
     register(module,name,data){defaults.set(name,data);},
+    registerMenu(){},
     get(module,name){const saved=localStorage.getItem(key(`${defaults.get(name)?.scope === 'client' ? id+':' : ''}${name}`));return saved === null ? structuredClone(defaults.get(name)?.default) : JSON.parse(saved);},
     async set(module,name,data){localStorage.setItem(key(`${defaults.get(name)?.scope === 'client' ? id+':' : ''}${name}`),JSON.stringify(data));defaults.get(name)?.onChange?.(data);return data;}
   },
