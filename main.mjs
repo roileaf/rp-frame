@@ -208,9 +208,10 @@ export function registerSocket() {
     if (connection?.accept(sender(this), data, game.users.activeGM?.id, nonce)) accept(data);
   });
   // Only {talking, mic} ever arrives here; socketlib authenticates the sender, not the payload.
+  // Handlers exist from socketlib.ready, before game.users does: other players' heartbeats can arrive while this client loads.
   socket.register('voice', function(payload) {
     const from = sender(this);
-    if (from && game.users.get(from) && roster.update(from, payload, Date.now())) renderVoice();
+    if (from && game.users?.get(from) && roster.update(from, payload, Date.now())) renderVoice();
   });
   // A newcomer's userConnected fires elsewhere before its handlers exist; it asks for statuses once ready.
   socket.register('voiceHello', function() {

@@ -453,3 +453,13 @@ test('poll commands authenticate the sender, persist, publish and open the poll 
   await runtime.pollCommand('clear',{pollId:poll.id});
   assert.deepEqual(polls().map(other=>other.question),['Second?']);
 });
+
+test('voice heartbeat arriving before game.users exists (client still loading) is ignored, not thrown', () => {
+  const loaded = game.users;
+  try {
+    game.users = undefined;
+    assert.doesNotThrow(() => handlers.get('voice').call(context('a'), { talking: true, mic: 'ok' }));
+  } finally {
+    game.users = loaded;
+  }
+});
