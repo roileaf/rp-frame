@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- Fix a console error ("Cannot read properties of undefined (reading 'get')") when another player's voice glow message arrived while Foundry was still loading.
+
 ## 1.0.1
 
 - Add **Hold on, don't go on yet**: players ask the table not to change the subject. They keep their place in the queue (urgent still jumps ahead), and their queue chip and badge turn blue. Toggle it from token controls or with **Z**.
