@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Post scene time marks in chat: every 10 minutes of an RP scene, everyone sees "RP scene: 10 minutes", "20 minutes" and so on. Change the interval or turn it off (0) with **RP Frame: scene time marks in chat**.
+
 ## 1.0.2
 
 - Fix a console error ("Cannot read properties of undefined (reading 'get')") when another player's voice glow message arrived while Foundry was still loading.

@@ -463,3 +463,37 @@ test('voice heartbeat arriving before game.users exists (client still loading) i
     game.users = loaded;
   }
 });
+
+test('authoritative GM posts a public chat message at each 10-minute mark of a scene', async () => {
+  const posted = [];
+  globalThis.ChatMessage = { create: async data => { posted.push(data); return data; } };
+  const realNow = Date.now;
+  try {
+    await runtime.command('end');
+    await runtime.command('join', 'a');
+    await runtime.command('start');
+    const startedAt = game.storyframe.rpFrame.getState().startedAt;
+    assert.ok(Number.isSafeInteger(startedAt));
+    timer();
+    Date.now = () => startedAt + 9 * 60000;
+    timer();
+    assert.equal(posted.length, 0);
+    Date.now = () => startedAt + 10 * 60000;
+    timer();
+    Date.now = () => startedAt + 10 * 60000 + 1000;
+    timer();
+    assert.equal(posted.length, 1);
+    assert.equal(posted[0].speaker.alias, 'RP Frame');
+    assert.match(posted[0].content, /RP scene: <strong>10 minutes<\/strong>/);
+    assert.equal(posted[0].whisper, undefined);
+    values.set('timeMarks', 0);
+    Date.now = () => startedAt + 20 * 60000;
+    timer();
+    assert.equal(posted.length, 1, 'setting 0 turns marks off');
+  } finally {
+    Date.now = realNow;
+    values.delete('timeMarks');
+    delete globalThis.ChatMessage;
+    await runtime.command('end');
+  }
+});

@@ -2,7 +2,8 @@
 export function emptyScene() {
   // `hold`: participants asking not to change the subject yet. A participant is urgent or holding, never both.
   // `since`: when the current speaker's turn began (GM clock), for the banner's turn timer.
-  return { version: 1, revision: 0, active: false, participants: [], urgent: [], hold: [], speaker: null, since: null };
+  // `startedAt`: when the GM started the scene (GM clock), for the chat time marks.
+  return { version: 1, revision: 0, active: false, participants: [], urgent: [], hold: [], speaker: null, since: null, startedAt: null };
 }
 
 export function readScene(input, isPlayer = () => true) {
@@ -18,6 +19,7 @@ export function readScene(input, isPlayer = () => true) {
   state.hold = [...new Set(Array.isArray(input.hold) ? input.hold : [])]
     .filter(id => state.participants.includes(id) && id !== state.speaker && !state.urgent.includes(id));
   state.since = state.speaker && Number.isSafeInteger(input.since) ? input.since : null;
+  state.startedAt = state.active && Number.isSafeInteger(input.startedAt) ? input.startedAt : null;
   return state;
 }
 
@@ -35,7 +37,7 @@ export function transition(previous, command, actor, { isPlayer = () => true, co
   const id = actor.isGM ? command.userId : actor.id;
   if (combat && !['end', 'leave', 'remove'].includes(command.type)) return previous;
   const state = readScene(previous, isPlayer);
-  const speaker = state.speaker;
+  const speaker = state.speaker, wasActive = state.active;
   const clear = () => Object.assign(state, { active: false, participants: [], urgent: [], hold: [], speaker: null });
   const advance = () => {
     state.speaker = waitingOrder(state)[0] ?? null;
@@ -103,5 +105,8 @@ export function transition(previous, command, actor, { isPlayer = () => true, co
   state.hold = state.hold.filter(userId => state.participants.includes(userId) && userId !== state.speaker);
   // A new speaker starts a new turn; the timer keeps no history.
   if (state.speaker !== speaker) state.since = state.speaker ? now : null;
+  // The scene clock starts when the GM starts the scene and stops when it ends.
+  if (!state.active) state.startedAt = null;
+  else if (!wasActive) state.startedAt = now;
   return JSON.stringify(state) === JSON.stringify(previous) ? previous : state;
 }

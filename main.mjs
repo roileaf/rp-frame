@@ -14,12 +14,14 @@ import { VoiceGlow, createPixiGlow, drawPixiGlow, fadeGlow, applyVoiceCameras, v
 import { voiceSettingsApp, refreshVoiceSettings, refreshVoiceMeter } from './scripts/voice-settings-app.mjs';
 import { PushToTalk, PTT_MOUSE } from './scripts/voice-ptt.mjs';
 import { POLL_RULES } from './scripts/poll-state.mjs';
+import { TimeMarks, formatMinutes } from './scripts/time-marks.mjs';
 import { pollApp } from './scripts/poll-app.mjs';
 
 export const MODULE_ID = 'rp-frame';
 let socket, controller, polls, connection, view, spotlight, highlight, pollTimer, voice, voiceGlow, appearances = normalizeAppearances();
 const seenPolls = new Set();
 const roster = new VoiceRoster();
+const timeMarks = new TimeMarks();
 const session = Date.now() + Math.random();
 let initialized = false;
 const isAuthority = () => game.user?.isGM && game.users.activeGM?.id === game.user.id;
@@ -80,6 +82,15 @@ function pollChanged(state) {
   Hooks.callAll('rpFramePollChanged', structuredClone(state));
 }
 
+/** Authoritative GM only: post "RP scene: 20 minutes" to chat for everyone at each interval of the scene. */
+function postTimeMark() {
+  const every = Number(setting('timeMarks'));
+  const mark = timeMarks.check(controller.state.startedAt, Date.now(), every * 60000);
+  if (!mark) return;
+  const content = `<div class="rp-frame-time-mark"><i class="fa-solid fa-hourglass-half"></i> RP scene: <strong>${formatMinutes(mark * every)}</strong></div>`;
+  void globalThis.ChatMessage?.create({ speaker: { alias: 'RP Frame' }, content })?.catch?.(report);
+}
+
 export function openPoll() {
   const App = pollApp();
   if (!App) return;
@@ -136,6 +147,7 @@ export function registerSettings() {
   register('tokenHighlight', { name: 'RP Frame: highlight speaker token', hint: 'Draw a green ring around the speaking player\'s character tokens.', scope: 'client', config: true, type: Boolean, default: true, onChange: refresh });
   register('linkSpotlight', { name: 'RP Frame: follow StoryFrame spotlight', hint: 'When optional StoryFrame is enabled, highlight existing speakers matching each player character. Restore the previous spotlight when the RP scene ends.', scope: 'world', config: true, type: Boolean, default: true, onChange: () => { if (controller) void spotlight?.sync(controller.state); } });
   register('poll', { scope: 'world', config: false, type: Object, default: {} });
+  register('timeMarks', { name: 'RP Frame: scene time marks in chat', hint: 'Post a chat message for everyone every this many minutes of an RP scene (10 minutes, 20 minutes, …). 0 turns it off.', scope: 'world', config: true, type: Number, range: { min: 0, max: 60, step: 5 }, default: 10 });
   register('stopForCombat', { name: 'RP Frame: end scene when combat starts', scope: 'world', config: true, type: Boolean, default: true });
   register('voiceGlow', { name: 'RP Frame: voice glow', hint: 'Players\' character tokens and camera tiles glow while they talk. Each player\'s browser measures their own mic level; no audio is sent or recorded.', scope: 'world', config: false, type: Boolean, default: false, onChange: () => { updateVoice(); renderVoice(); refreshVoiceSettings(); } });
   register('voiceOptOut', { name: 'RP Frame: don\'t use my mic for voice glow', scope: 'client', config: false, type: Boolean, default: false, onChange: () => { updateVoice(); refreshVoiceSettings(); } });
@@ -326,7 +338,10 @@ export async function initialize() {
       controller.authority = polls.authority = false;
       connection.poll(game.users.activeGM?.id);
     } else if (!controller.authority || !polls.authority) void controller.initialize().then(() => polls.initialize()).catch(report);
-    else if (controller.state.active) void spotlight.sync(controller.state);
+    else if (controller.state.active) {
+      void spotlight.sync(controller.state);
+      postTimeMark();
+    }
   };
   poll();
   pollTimer = globalThis.setInterval(poll, 1000);

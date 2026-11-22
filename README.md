@@ -21,6 +21,7 @@ Enable **RP Frame** and **socketlib** in Manage Modules. StoryFrame is optional.
 - When the GM socket is unavailable, the same banner keeps its portrait and queue and reads **Waiting for GM**. No waiting banner remains after the scene ends.
 - Drag the banner to move it; drag its corner to resize. Layout and visibility are per client. Queue badges appear beside player names and on cameras.
 - Scenes persist through GM refresh. Offline participants are retained so a refresh does not reorder the queue. Commands wait for a ready GM socket; slow heartbeat replies have a five-second deadline.
+- Every 10 minutes of a scene, a chat message for everyone marks the time: **RP scene: 10 minutes**, **20 minutes**, and so on. The clock starts when the GM starts the scene. Change the interval or set 0 to turn it off in **RP Frame: scene time marks in chat**. Only the GM's game posts, and a GM refresh doesn't repeat earlier marks.
 - Combat automatically ends RP scenes by default. Disable this in RP Frame settings if desired.
 
 Default shortcuts, editable in Foundry's **Configure Controls**: **H** requests/leaves the queue, **X** toggles urgent speak, **Z** toggles hold on, **Space** takes/finishes spotlight (GM: approve/end scene), and **Shift+Space** delays your speaking turn. H cannot remove the active speaker; use Space to finish.
