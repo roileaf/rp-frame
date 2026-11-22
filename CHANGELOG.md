@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.3
 
 - Post scene time marks in chat: every 10 minutes of an RP scene, everyone sees "RP scene: 10 minutes", "20 minutes" and so on. Change the interval or turn it off (0) with **RP Frame: scene time marks in chat**.
 
